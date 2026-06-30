@@ -95,19 +95,26 @@ pip install python-dotenv pyperclip requests google-antigravity "youtube-transcr
 
 ### 4.2 Podcast 轉筆記
 
-Podcast 沒有像 YouTube 一樣的公開字幕 API，因此這條線需要多一個手動步驟：
+Podcast 沒有像 YouTube 一樣的公開字幕 API，因此這條線需要多一個手動步驟，從 Apple Podcasts 網頁版（[podcasts.apple.com](https://podcasts.apple.com)）取得音訊直連網址：
 
-1. 打開 Podcast 的網頁播放頁面，按 `F12` 開啟瀏覽器開發者工具。
-2. 切到「Network（網路）」分頁，播放音檔，找到副檔名為 `.mp3` / `.m4a` 的請求，右鍵複製連結網址。
-3. 雙擊桌面的「start_podcast_factory.bat」捷徑。
-4. 程式會自動：
+1. 用瀏覽器（Chrome / Edge）打開該集節目的 Apple Podcasts 網頁播放頁。
+2. 按 `F12` 開啟開發者工具，切到 **「Network（網路）」** 分頁。
+3. 確認左上角有開啟 **「Preserve log（保留紀錄）」**，避免播放途中頁面狀態改變導致 Network 紀錄被清空。
+4. 在 Network 分頁的篩選列點選 **「Media」**（如果沒有這個分類，改在搜尋框輸入 `mp3` 或 `m4a` 篩選）。
+5. 按下節目的播放鍵，讓音檔開始載入；此時 Network 清單會跳出一筆新的請求，Type 通常顯示 `media`，Name 欄位可能是一串亂碼或 ID，但副檔名是 `.mp3` 或 `.m4a`。
+6. 對著這筆請求按右鍵 → **「Copy」→「Copy URL」**（不要選 Copy as cURL / fetch，那些是給除錯用的完整指令格式，不是純網址）。
+7. 此時剪貼簿裡就是音訊的直連網址，**請盡快接著下一步**，因為部分音訊網址帶有時效性 token，複製太久才執行可能會下載失敗（403 / 404）。
+8. 雙擊桌面的「start_podcast_factory.bat」捷徑。
+9. 程式會自動：
    - 驗證剪貼簿內容是否為音訊直連網址
    - 下載音訊檔到本機暫存
    - 將音訊上傳給 Gemini 進行多模態聽寫（含時間戳記）
    - 產出包含核心主題、分段觀點、Summary、Takeaways 的筆記
    - 寫入 Google 雲端硬碟的 `Podcast_Notes` 資料夾
    - 自動刪除暫存音訊檔，不佔用本機空間
-5. 語音較長時，Gemini 聽寫可能需要 1～3 分鐘，請耐心等候。
+10. 語音較長時，Gemini 聽寫可能需要 1～3 分鐘，請耐心等候。
+
+> ⚠️ **付費訂閱限定集數**：如果該集是 Apple Podcasts Subscriptions 的付費訂閱內容，網路請求裡的音訊網址通常會帶有跟你 Apple 帳號綁定的授權 token，必須先在瀏覽器登入帳號並已訂閱該節目，才抓得到能正常下載的連結；免費公開集數則不受影響，登入與否都能取得同樣的直連網址。
 
 ### 4.3 匯入 NotebookLM 進行深度研究
 
