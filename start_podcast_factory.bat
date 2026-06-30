@@ -1,0 +1,26 @@
+@echo off
+chcp 65001 > nul
+:: 1. 強制切換到正確的工作目錄
+cd /d D:\KnowledgeFactory
+
+:: 2. 使用絕對路徑啟動虛擬環境（這樣絕對不會找不到路徑）
+call D:\KnowledgeFactory\.venv\Scripts\activate
+
+:: 3. 執行 Python
+python podcast_agent.py
+
+:: 4. 錯誤偵測：只有失敗時才暫停視窗，讓你看清楚錯誤訊息
+if %errorlevel% neq 0 (
+    echo.
+    echo =======================================
+    echo ❌ 任務執行失敗！請往上捲動查看錯誤訊息。
+    echo =======================================
+    pause
+    exit /b 1
+)
+
+echo.
+echo =======================================
+echo 🏁 任務結束，視窗將在 5 秒後自動關閉...
+echo =======================================
+timeout /t 5 > nul

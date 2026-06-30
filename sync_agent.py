@@ -1,0 +1,150 @@
+from dotenv import load_dotenv
+load_dotenv()  # 安全讀取 .env 金鑰
+
+import os
+import sys
+import asyncio
+import pyperclip  # 引入剪貼簿套件
+from google.antigravity import Agent, LocalAgentConfig
+from youtube_transcript_api import YouTubeTranscriptApi
+
+# Gemini 速率限制 / 伺服器過載重試設定
+MAX_RETRIES = 4
+RETRY_BASE_DELAY = 8  # 秒，每次重試延遲會倍增 (8s → 16s → 32s → 64s)
+
+
+async def chat_with_retry(agent, prompt, **kwargs):
+    """呼叫 Gemini 時自動處理速率限制 / 伺服器過載等暫時性錯誤，採用指數退避重試。"""
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            return await agent.chat(prompt, **kwargs)
+        except Exception as e:
+            last_error = e
+            err_text = str(e).lower()
+            # 涵蓋：429 速率限制 / 503 伺服器過載("high demand"、"unavailable") / 暫時性逾時
+            is_retryable = any(keyword in err_text for keyword in [
+                "429", "rate", "quota",
+                "503", "unavailable", "high demand", "overloaded",
+                "deadline exceeded", "timeout",
+            ])
+            if is_retryable and attempt < MAX_RETRIES:
+                delay = RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                print(f"⚠️ 偵測到暫時性錯誤（第 {attempt} 次嘗試）：{e}")
+                print(f"   {delay} 秒後自動重試...")
+                await asyncio.sleep(delay)
+                continue
+            # 把實際重試次數標記在例外訊息上，避免外層印出誤導性的「已重試 N 次」
+            last_error.attempts_made = attempt
+            raise last_error
+
+def get_video_id(url):
+    """從網址自動解析出 YouTube 的 Video ID"""
+    if "youtu.be/" in url:
+        return url.split("youtu.be/")[1].split("?")[0].split("#")[0]
+    elif "v=" in url:
+        return url.split("v=")[1].split("&")[0].split("#")[0]
+    return None
+
+async def main():
+    # =========================================================================
+    # 🎯 核心：自動從 Windows 剪貼簿讀取你剛剛按 Ctrl+C 複製的網址
+    # =========================================================================
+    target_video_url = pyperclip.paste().strip()
+    
+    # 🚨 安全檢查：確保剪貼簿裡的是 YouTube 網址
+    if "youtube.com" not in target_video_url and "youtu.be" not in target_video_url:
+        print("\n❌ 【安全中斷】偵測失敗！")
+        print(f"👉 當前剪貼簿內容不是 YouTube 網址：\n   \"{target_video_url}\"")
+        print("💡 請先去瀏覽器複製正確的影片網址後，再點擊執行。")
+        sys.exit(1)
+        
+    print(f"\n🚀 成功抓取剪貼簿網址: {target_video_url}")
+    
+    video_id = get_video_id(target_video_url)
+    if not video_id:
+        print("❌ 無法解析影片 ID，請檢查網址格式是否正確。")
+        sys.exit(1)
+
+    # ─── 階段一：抓取字幕（新版 1.x instance-based API + 多層 Fallback） ───
+    print("⏳ 正在從 YouTube 伺服器下載原始字幕...")
+    try:
+        # 新版 youtube-transcript-api (1.x) 改為「先建立實例」再呼叫，
+        # 舊版的 YouTubeTranscriptApi.list_transcripts(video_id) 已被官方移除。
+        ytt_api = YouTubeTranscriptApi()
+        transcript_list = ytt_api.list(video_id)
+        
+        srt_data = None
+        # 2. 優先尋找繁體中文、簡體中文或英文的手動字幕
+        try:
+            srt_data = transcript_list.find_transcript(['zh-TW', 'zh-CN', 'en']).fetch()
+        except Exception:
+            pass
+
+        # 3. 找不到手動字幕，改抓系統自動產生的中文或英文字幕
+        if srt_data is None:
+            try:
+                srt_data = transcript_list.find_generated_transcript(['zh-TW', 'zh-CN', 'en']).fetch()
+            except Exception:
+                pass
+
+        # 4. 最終 Fallback：完全不限語言，抓任何一個可用的字幕軌（手動或自動皆可）
+        #    這能處理像是日文、韓文等冷門語言頻道沒有中英字幕的情況
+        if srt_data is None:
+            available = list(transcript_list)
+            if available:
+                fallback_transcript = available[0]
+                print(f"⚠️ 找不到中文/英文字幕，改用偵測到的「{fallback_transcript.language}」字幕（將由 Gemini 一併翻譯整理）。")
+                srt_data = fallback_transcript.fetch()
+            else:
+                raise Exception("此影片完全沒有提供任何語言的字幕軌")
+
+        # 新版 fetch() 回傳的是 FetchedTranscript 物件，內含 snippet 物件（用 .text 屬性）
+        # 而非舊版的字典（['text']），這裡統一用 getattr 相容兩種寫法以防萬一。
+        raw_text = " ".join([getattr(item, "text", None) or item["text"] for item in srt_data])
+        print("💾 字幕下載成功！")
+        
+    except Exception as e:
+        print(f"❌ 抓取字幕失敗（該影片可能未提供字幕、字幕被關閉，或遭到 YouTube 阻擋）：{e}")
+        print("💡 建議：確認影片本身在 YouTube 網頁上是否顯示「字幕」按鈕(CC)，沒有 CC 按鈕就無法自動抓取。")
+        sys.exit(1)
+
+    # ─── 階段二：呼叫 Gemini 排版摘要 ───
+    print("🧠 正在將逐字稿送交 Gemini 進行大腦精煉與結構化排版...")
+    config = LocalAgentConfig(
+        system_instructions=(
+            "你是一個頂級的知識管理專家。你將收到一段 YouTube 影片的原始逐字稿。"
+            "請將其整理成適合人類閱讀的高級筆記（繁體中文，台灣）。"
+            "要求：1. 使用結構清晰的 Markdown 標題（##, ###）。"
+            "2. 使用項目符號列出核心觀點，對關鍵詞進行**粗體**強調。"
+            "3. 保持邏輯通順，去除重複贅詞。"
+            "4. 重要：請直接在回覆內容中輸出完整的 Markdown 筆記文字即可，"
+            "不要呼叫任何工具（包括 create_file / edit_file 等檔案操作工具），"
+            "也不要嘗試自行建立或寫入任何檔案，檔案儲存將完全由外部程式處理。"
+        )
+    )
+    
+    try:
+        async with Agent(config) as agent:
+            prompt = f"請幫我將以下逐字稿整理成漂亮的 Obsidian 筆記：\n\n{raw_text}"
+            ai_response = await chat_with_retry(agent, prompt)
+            
+            # ─── 階段三：自動寫入 ───
+            output_dir = r"G:\我的雲端硬碟\Knowledge_Base\02_Second_Brain\YouTube_Notes"
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, f"YT_{video_id}.md")
+            
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(await ai_response.text())
+                
+            print(f"\n🎉 大功告成！YouTube 筆記已成功寫入：")
+            print(f"📍 路徑: {output_path}")
+            
+    except Exception as e:
+        attempts = getattr(e, "attempts_made", 1)
+        print(f"❌ Gemini 處理過程中發生錯誤（已嘗試 {attempts} 次仍失敗）：{e}")
+        print("💡 若錯誤訊息包含「high demand」或「503」，代表 Google 伺服器當下過載，純屬暫時性問題，建議幾分鐘後再重新執行一次。")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
