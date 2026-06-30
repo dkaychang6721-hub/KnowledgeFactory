@@ -9,6 +9,12 @@ __pycache__/
 # Environment variables
 .env
 
+# 含個人路徑的原始檔（repo 內只保留 .example 版本）
+podcast_agent.py
+sync_agent.py
+start_podcast_factory.bat
+start_youtube_factory.bat
+
 # OS
 .DS_Store
 Thumbs.db

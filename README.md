@@ -34,12 +34,15 @@ YouTube 與 Podcast 是兩條獨立但結構對稱的處理線，差異只在「
 D:\KnowledgeFactory\
 ├── .venv\                         # Python 虛擬環境（已裝好所有依賴套件）
 ├── .env                           # 存放 Gemini API Key（機密，勿分享、勿上傳雲端）
-├── sync_agent.py                  # YouTube 字幕抓取 + AI 筆記生成
-├── podcast_agent.py               # Podcast 音訊下載 + AI 聽寫摘要
-├── start_youtube_factory.bat      # YouTube 流程一鍵啟動器
-├── start_podcast_factory.bat      # Podcast 流程一鍵啟動器
+├── sync_agent.py                  # YouTube 字幕抓取 + AI 筆記生成（含個人路徑，不會上傳）
+├── podcast_agent.py               # Podcast 音訊下載 + AI 聽寫摘要（含個人路徑，不會上傳）
+├── start_youtube_factory.bat      # YouTube 流程一鍵啟動器（含個人路徑，不會上傳）
+├── start_podcast_factory.bat      # Podcast 流程一鍵啟動器（含個人路徑，不會上傳）
+├── *.example                      # 上述四個檔案的範例版本（已上傳至 GitHub）
 └── README.md                      # 本說明文件
 ```
+
+> ⚠️ **首次設定**：repo 內只會有 `sync_agent.py.example`、`podcast_agent.py.example`、`start_youtube_factory.bat.example`、`start_podcast_factory.bat.example`，因為正式檔案內含你個人的資料夾路徑，已被 `.gitignore` 排除。請複製這四個 `.example` 檔，移除副檔名中的 `.example`（例如 `sync_agent.py.example` → `sync_agent.py`），再依下方說明把裡面的路徑改成你自己的環境路徑。
 
 筆記輸出位置（與 Obsidian 直接連動的雲端硬碟資料夾）：
 

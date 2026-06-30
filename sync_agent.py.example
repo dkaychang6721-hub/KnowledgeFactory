@@ -51,16 +51,16 @@ async def main():
     # 🎯 核心：自動從 Windows 剪貼簿讀取你剛剛按 Ctrl+C 複製的網址
     # =========================================================================
     target_video_url = pyperclip.paste().strip()
-    
+
     # 🚨 安全檢查：確保剪貼簿裡的是 YouTube 網址
     if "youtube.com" not in target_video_url and "youtu.be" not in target_video_url:
         print("\n❌ 【安全中斷】偵測失敗！")
         print(f"👉 當前剪貼簿內容不是 YouTube 網址：\n   \"{target_video_url}\"")
         print("💡 請先去瀏覽器複製正確的影片網址後，再點擊執行。")
         sys.exit(1)
-        
+
     print(f"\n🚀 成功抓取剪貼簿網址: {target_video_url}")
-    
+
     video_id = get_video_id(target_video_url)
     if not video_id:
         print("❌ 無法解析影片 ID，請檢查網址格式是否正確。")
@@ -73,7 +73,7 @@ async def main():
         # 舊版的 YouTubeTranscriptApi.list_transcripts(video_id) 已被官方移除。
         ytt_api = YouTubeTranscriptApi()
         transcript_list = ytt_api.list(video_id)
-        
+
         srt_data = None
         # 2. 優先尋找繁體中文、簡體中文或英文的手動字幕
         try:
@@ -103,7 +103,7 @@ async def main():
         # 而非舊版的字典（['text']），這裡統一用 getattr 相容兩種寫法以防萬一。
         raw_text = " ".join([getattr(item, "text", None) or item["text"] for item in srt_data])
         print("💾 字幕下載成功！")
-        
+
     except Exception as e:
         print(f"❌ 抓取字幕失敗（該影片可能未提供字幕、字幕被關閉，或遭到 YouTube 阻擋）：{e}")
         print("💡 建議：確認影片本身在 YouTube 網頁上是否顯示「字幕」按鈕(CC)，沒有 CC 按鈕就無法自動抓取。")
@@ -123,23 +123,23 @@ async def main():
             "也不要嘗試自行建立或寫入任何檔案，檔案儲存將完全由外部程式處理。"
         )
     )
-    
+
     try:
         async with Agent(config) as agent:
             prompt = f"請幫我將以下逐字稿整理成漂亮的 Obsidian 筆記：\n\n{raw_text}"
             ai_response = await chat_with_retry(agent, prompt)
-            
-            # ─── 階段三：自動寫入 ───
-            output_dir = r"G:\我的雲端硬碟\Knowledge_Base\02_Second_Brain\YouTube_Notes"
+
+            # ─── 階段三：自動寫入（請改成你自己的筆記輸出路徑） ───
+            output_dir = r"C:\path\to\your\Notes\YouTube_Notes"
             os.makedirs(output_dir, exist_ok=True)
             output_path = os.path.join(output_dir, f"YT_{video_id}.md")
-            
+
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(await ai_response.text())
-                
+
             print(f"\n🎉 大功告成！YouTube 筆記已成功寫入：")
             print(f"📍 路徑: {output_path}")
-            
+
     except Exception as e:
         attempts = getattr(e, "attempts_made", 1)
         print(f"❌ Gemini 處理過程中發生錯誤（已嘗試 {attempts} 次仍失敗）：{e}")

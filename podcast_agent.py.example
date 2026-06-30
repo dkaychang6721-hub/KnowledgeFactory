@@ -43,7 +43,7 @@ async def main():
     # 🎯 升級：自動從 Windows 剪貼簿讀取你從 F12 撈到並複製的 MP3 直連網址
     # =========================================================================
     podcast_url = pyperclip.paste().strip()
-    
+
     # 🚨 安全檢查：確保剪貼簿裡的是音訊直連網址（通常包含 mp3, m4a, wav 等或特定的 podcast 串流特徵）
     # 這裡放寬檢查，只要不是常見的網頁 HTML 結構、或包含常見音訊關鍵字即通過
     if "http" not in podcast_url or (".html" in podcast_url and "mp3" not in podcast_url):
@@ -65,9 +65,9 @@ async def main():
         base_name = f"Podcast_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     temp_audio_path = f"temp_{base_name}.mp3"
-    
-    # 2. 自動確認輸出資料夾
-    output_dir = r"G:\我的雲端硬碟\Knowledge_Base\02_Second_Brain\Podcast_Notes"
+
+    # 2. 自動確認輸出資料夾（請改成你自己的筆記輸出路徑）
+    output_dir = r"C:\path\to\your\Notes\Podcast_Notes"
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{base_name}.md")
 
@@ -90,7 +90,7 @@ async def main():
     # ─── 階段二：呼叫 Gemini 進行多模態聽寫與摘要 ───
     print("\n🧠 正在將音訊上傳至 Gemini 進行深度大腦聽寫與結構化排版...")
     print("📢 (提示：語音較長時，Gemini 聽寫可能需要 1~3 分鐘，請耐心等候...)")
-    
+
     config = LocalAgentConfig(
         system_instructions=(
             "你是一個頂級的知識管理專家。你將收到一段 Podcast 的原始音訊檔案。"
@@ -106,25 +106,25 @@ async def main():
             "也不要嘗試自行建立或寫入任何檔案，檔案儲存將完全由外部程式處理。"
         )
     )
-    
+
     try:
         async with Agent(config) as agent:
             prompt = "請幫我仔細聆聽這段音訊，並依照系統指令整理成排版完美的 Obsidian Markdown 筆記。"
             ai_response = await chat_with_retry(agent, prompt, files=[temp_audio_path])
-            
+
             # ─── 階段三：寫入 Obsidian 與雲端 ───
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(await ai_response.text())
-                
+
             print(f"\n🎉 大功告成！Podcast 筆記已成功寫入：")
             print(f"📍 路徑: {output_path}")
-            
+
     except Exception as e:
         attempts = getattr(e, "attempts_made", 1)
         print(f"❌ Gemini 處理過程中發生錯誤（已嘗試 {attempts} 次仍失敗）：{e}")
         print("💡 若錯誤訊息包含「high demand」或「503」，代表 Google 伺服器當下過載，純屬暫時性問題，建議幾分鐘後再重新執行一次。")
         sys.exit(1)
-        
+
     finally:
         # ─── 階段四：環境清理 ───
         if os.path.exists(temp_audio_path):
