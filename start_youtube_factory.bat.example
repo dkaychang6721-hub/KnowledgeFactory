@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 > nul
 :: 1. 強制切換到正確的工作目錄（請改成你自己的專案路徑）
 cd /d C:\path\to\your\KnowledgeFactory
