@@ -108,6 +108,7 @@ pip install python-dotenv pyperclip requests google-antigravity "youtube-transcr
 | `model produced an invalid tool call`、`is not a valid artifact path` | 模型自己嘗試呼叫 Antigravity 內建的 `create_file` 工具，想把筆記直接寫到沙盒外的路徑(如 `D:\KnowledgeFactory\...`)，但 Antigravity 規定工具產生的檔案只能寫進 `~/.gemini/antigravity/brain/<session_id>/` 沙盒資料夾 | 已在 `system_instructions` 中明確禁止模型呼叫任何檔案工具，要求它只回覆純文字筆記內容，檔案寫入完全交由 Python 腳本的 `open().write()` 處理 |
 | `503` / `high demand` / `UNAVAILABLE` | Google 後端 Gemini 模型當下流量過大，屬於暫時性問題，與你的程式碼或網路無關 | 已將重試機制擴大偵測這類關鍵字，遇到時會自動以 8s/16s/32s/64s 間隔重試最多 4 次；若 4 次都失敗，代表伺服器負載持續偏高，建議等幾分鐘後再重新執行 |
 | Gemini 處理時跳出速率限制相關錯誤 | 短時間內處理過多影片，觸發 API 配額限制 | 程式已內建自動重試（最多 4 次，8s/16s/32s/64s 退避），若仍失敗請間隔幾分鐘後再執行 |
+| `RESOURCE_EXHAUSTED`、錯誤訊息含 `PerDay`（如 `GenerateRequestsPerDayPerProjectPerModel-FreeTier`） | Gemini 免費方案**每日**請求額度已用盡，這不是暫時性問題，重試無效 | 程式已會偵測此情況並直接放棄重試（不再浪費 4 次重試的等待時間），請等隔天額度重置，或前往 https://ai.dev/rate-limit 查看用量、升級付費方案 |
 | 視窗一閃就消失，看不到錯誤 | 舊版 `.bat` 沒有錯誤偵測機制 | 確認 `.bat` 是否為最新版（含 `if %errorlevel% neq 0 pause` 機制） |
 | Obsidian 沒看到新筆記 | Google Drive 同步延遲 | 等待 10～30 秒後重新整理 Obsidian |
 | `ModuleNotFoundError: No module named 'dotenv'`（或任何已安裝過的套件報錯找不到） | 改過資料夾名稱後，`activate.bat` 內部寫死了建立虛擬環境當時的舊絕對路徑（如 `D:\Antigravity\.venv`），導致 `activate` 沒有正確生效，`.bat` 實際上用系統版 Python 執行，而非虛擬環境版本 | `.bat` 已改為直接呼叫 `.venv\Scripts\python.exe` 的絕對路徑，不再依賴 `activate.bat`；若未來又改資料夾名稱，記得同步更新 `.bat` 內的路徑 |
@@ -132,7 +133,8 @@ pip install python-dotenv pyperclip requests google-antigravity "youtube-transcr
 | v1.3 | 修正模型自行呼叫 `create_file` 工具寫入沙盒外路徑導致的 invalid tool call 錯誤（已在 system_instructions 中禁止模型呼叫任何檔案工具）；擴大重試機制偵測範圍至 503 / high demand / unavailable 等暫時性伺服器過載錯誤；修正重試次數訊息的誤導性顯示 |
 | v1.4 | 資料夾從 `D:\Antigravity` 改名為 `D:\KnowledgeFactory` 後，`.bat` 改用虛擬環境內 `python.exe` 的絕對路徑直接執行，不再透過 `activate.bat`（修正 activate.bat 內硬編碼舊路徑導致跑到系統版 Python、缺少套件的問題） |
 | v1.5 | 修正 `.bat` 在繁體中文 Windows 下因 `chcp 65001` + 中文字搭配出現亂碼、指令找不到的問題（改成純 ASCII，移除 chcp） |
+| v1.6 | 區分「每日額度用盡」與「暫時性過載」兩種錯誤：偵測到 `PerDay` 配額用盡時不再無謂重試 4 次，直接放棄並提示等隔天重置或升級方案（`sync_agent.py` 與 `sync_agent.py.example` 同步修正） |
 
 ---
 
-*最後更新：本文件對應的程式碼版本為 v1.5。*
+*最後更新：本文件對應的程式碼版本為 v1.6。*
