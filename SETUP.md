@@ -25,10 +25,8 @@ cd KnowledgeFactory
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
-pip install python-dotenv pyperclip requests "youtube-transcript-api>=1.0"
+pip install python-dotenv pyperclip requests google-antigravity "youtube-transcript-api>=1.0"
 ```
-
-> `google.antigravity` 套件請依你取得的 SDK 安裝方式另行安裝（非 PyPI 公開套件）。
 
 ---
 

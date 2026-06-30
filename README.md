@@ -64,7 +64,7 @@ D:\KnowledgeFactory\
 虛擬環境 `.venv` 已預先安裝好以下套件，若需重建環境可參考：
 
 ```bash
-pip install python-dotenv pyperclip requests "youtube-transcript-api>=1.0"
+pip install python-dotenv pyperclip requests google-antigravity "youtube-transcript-api>=1.0"
 ```
 
 > ⚠️ **版本注意**：`youtube-transcript-api` 在 1.0 版做了重大改版（instance-based API），舊教學文章裡常見的 `YouTubeTranscriptApi.list_transcripts(video_id)` 寫法已被移除。本專案的 `sync_agent.py` 已採用新版寫法（`YouTubeTranscriptApi().list(video_id)`），若未來套件再次更新導致報錯，請優先檢查官方 PyPI 頁面的範例程式碼。
