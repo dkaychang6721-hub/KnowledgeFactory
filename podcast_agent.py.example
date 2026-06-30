@@ -8,6 +8,7 @@ import datetime
 import requests
 import pyperclip  # 引入剪貼簿套件
 from google.antigravity import Agent, LocalAgentConfig
+from google.antigravity.types import Audio
 
 # Gemini 速率限制 / 伺服器過載重試設定
 MAX_RETRIES = 4
@@ -110,7 +111,9 @@ async def main():
     try:
         async with Agent(config) as agent:
             prompt = "請幫我仔細聆聽這段音訊，並依照系統指令整理成排版完美的 Obsidian Markdown 筆記。"
-            ai_response = await chat_with_retry(agent, prompt, files=[temp_audio_path])
+            with open(temp_audio_path, "rb") as f:
+                audio_attachment = Audio(data=f.read(), mime_type="audio/mpeg")
+            ai_response = await chat_with_retry(agent, [prompt, audio_attachment])
 
             # ─── 階段三：寫入 Obsidian 與雲端 ───
             with open(output_path, "w", encoding="utf-8") as f:

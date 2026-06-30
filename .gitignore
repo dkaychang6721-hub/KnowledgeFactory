@@ -15,6 +15,9 @@ sync_agent.py
 start_podcast_factory.bat
 start_youtube_factory.bat
 
+# 程式執行時的暫存音訊檔
+temp_*.mp3
+
 # OS
 .DS_Store
 Thumbs.db
