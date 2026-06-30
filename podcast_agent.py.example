@@ -86,6 +86,8 @@ async def main():
             sys.exit(1)
     except Exception as e:
         print(f"❌ 網路連線或下載發生錯誤：{e}")
+        if os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
         sys.exit(1)
 
     # ─── 階段二：呼叫 Gemini 進行多模態聽寫與摘要 ───
