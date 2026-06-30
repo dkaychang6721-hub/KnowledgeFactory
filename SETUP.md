@@ -48,21 +48,19 @@ GEMINI_API_KEY=你的金鑰
 
 ---
 
-## 5. 複製並修改四個 `.example` 檔
+## 5. 複製並修改兩個 `.example` 檔
 
 把以下檔案複製一份，移除檔名最後的 `.example`：
 
 | 範本檔 | 改名為 |
 |---|---|
 | `sync_agent.py.example` | `sync_agent.py` |
-| `podcast_agent.py.example` | `podcast_agent.py` |
 | `start_youtube_factory.bat.example` | `start_youtube_factory.bat` |
-| `start_podcast_factory.bat.example` | `start_podcast_factory.bat` |
 
 接著打開改名後的檔案，把裡面的佔位路徑改成你自己的實際路徑：
 
-- `sync_agent.py` 和 `podcast_agent.py` 裡的 `output_dir = r"C:\path\to\your\Notes\..."` → 改成你自己存放筆記的資料夾（例如 Obsidian vault 內的某個子資料夾）
-- `start_youtube_factory.bat` 和 `start_podcast_factory.bat` 裡的 `C:\path\to\your\KnowledgeFactory` → 改成你 clone 下來的實際專案路徑
+- `sync_agent.py` 裡的 `output_dir = r"C:\path\to\your\Notes\..."` → 改成你自己存放筆記的資料夾（例如 Obsidian vault 內的某個子資料夾）
+- `start_youtube_factory.bat` 裡的 `C:\path\to\your\KnowledgeFactory` → 改成你 clone 下來的實際專案路徑
 
 ---
 
@@ -72,13 +70,11 @@ GEMINI_API_KEY=你的金鑰
 2. 雙擊 `start_youtube_factory.bat`
 3. 確認筆記有正確寫入你在步驟 5 設定的輸出資料夾
 
-成功後即可比照辦理測試 `start_podcast_factory.bat`。
-
 ---
 
 ## 7. （選用）建立桌面捷徑
 
-對 `start_youtube_factory.bat` / `start_podcast_factory.bat` 按右鍵 → 傳送到 → 桌面（建立捷徑），之後就能雙擊桌面圖示直接執行。
+對 `start_youtube_factory.bat` 按右鍵 → 傳送到 → 桌面（建立捷徑），之後就能雙擊桌面圖示直接執行。
 
 ---
 

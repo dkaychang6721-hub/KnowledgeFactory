@@ -11,6 +11,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 # Gemini 速率限制 / 伺服器過載重試設定
 MAX_RETRIES = 4
 RETRY_BASE_DELAY = 8  # 秒，每次重試延遲會倍增 (8s → 16s → 32s → 64s)
+CHAT_TIMEOUT_SECONDS = 600  # 單次呼叫逾時秒數，避免連線卡死卻不拋例外導致無限期等待
 
 
 async def chat_with_retry(agent, prompt, **kwargs):
@@ -18,10 +19,12 @@ async def chat_with_retry(agent, prompt, **kwargs):
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            return await agent.chat(prompt, **kwargs)
+            return await asyncio.wait_for(agent.chat(prompt, **kwargs), timeout=CHAT_TIMEOUT_SECONDS)
         except Exception as e:
             last_error = e
             err_text = str(e).lower()
+            if isinstance(e, asyncio.TimeoutError):
+                err_text = f"timeout：等待 Gemini 回應超過 {CHAT_TIMEOUT_SECONDS} 秒"
             # 涵蓋：429 速率限制 / 503 伺服器過載("high demand"、"unavailable") / 暫時性逾時
             is_retryable = any(keyword in err_text for keyword in [
                 "429", "rate", "quota",
@@ -30,7 +33,7 @@ async def chat_with_retry(agent, prompt, **kwargs):
             ])
             if is_retryable and attempt < MAX_RETRIES:
                 delay = RETRY_BASE_DELAY * (2 ** (attempt - 1))
-                print(f"⚠️ 偵測到暫時性錯誤（第 {attempt} 次嘗試）：{e}")
+                print(f"⚠️ 偵測到暫時性錯誤（第 {attempt} 次嘗試）：{e or err_text}")
                 print(f"   {delay} 秒後自動重試...")
                 await asyncio.sleep(delay)
                 continue
